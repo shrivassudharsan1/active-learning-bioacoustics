@@ -1,4 +1,4 @@
-# Active learning for bioacoustics — minimal demo
+# Active learning for bioacoustics
 
 A tiny, **standalone** Python example of **pool-based active learning** for **multiclass classification**, written for researchers who work with **bird / bioacoustic** data in the field.
 
