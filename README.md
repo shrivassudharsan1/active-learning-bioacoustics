@@ -1,84 +1,62 @@
-# Active learning for bioacoustics
+# Active Learning for Bioacoustics
 
-A tiny, **standalone** Python example of **pool-based active learning** for **multiclass classification**, written for researchers who work with **bird / bioacoustic** data in the field.
+An active learning system for bioacoustic multi-label classification using pretrained BirdNET embeddings, built to improve sample efficiency in scenarios where labeling wildlife recordings is expensive.
 
-In practice, you often:
+---
 
-1. Turn recordings into **fixed embeddings** (e.g. from a pretrained audio model).
-2. Train a **lightweight classifier** on a **small** set of labeled segments.
-3. Use **active learning** to choose which unlabeled clips to annotate next—e.g. by **uncertainty** (high entropy of predicted class probabilities).
+## What This Project Does
 
-This repo **does not** use real audio or any private dataset. It uses **synthetic tabular data** from scikit-learn so you can run and share the idea without leaking sensitive data.
+Labeling bioacoustic recordings is time-consuming and requires domain expertise. This project implements a pool-based active learning loop that:
 
-## What this demo does
+1. Takes raw audio segments and extracts fixed embeddings using a pretrained audio model (BirdNET/Perch2)
+2. Trains a lightweight classifier on a small labeled set
+3. Uses uncertainty sampling (entropy-based) to select the most informative unlabeled samples for annotation
+4. Iteratively retrains as new labels are added
 
-| Step | Description |
-|------|-------------|
-| Data | `sklearn.datasets.make_classification` → features + labels |
-| Split | Train **pool** + held-out **test** (test never used for querying) |
-| Start | Random **small labeled** subset; rest of pool is **unlabeled** |
-| Loop | Train `RandomForestClassifier` → `predict_proba` on unlabeled → **entropy** per sample → label top‑**k** most uncertain → add to labeled set → retrain |
-| Metric | **Accuracy on the fixed test set** printed each round |
+The result: you need far fewer labeled examples to reach strong classification performance compared to random sampling.
 
-**Entropy sampling:** for each unlabeled point, compute  
-\(H = -\sum_c p_c \log p_c\) over class probabilities \(p_c\). Higher \(H\) ⇒ more uncertain ⇒ prioritize for labeling.
+---
 
-## Requirements
+## My Work
 
-- Python 3.10+ recommended  
-- See `requirements.txt`
+**Active Learning Loop with Multiple Classification Heads (demo/ and compare_all_strategies.py)**
+- Built the core active learning loop: pool-based uncertainty sampling with entropy scoring, multi-round training and evaluation, support for multiple classifier heads (Random Forest, logistic regression, MLP)
+- Implemented and compared multiple active learning strategies to benchmark which head + query strategy combination performs best on bioacoustic data
+- Designed the loop to operate directly on BirdNET embeddings rather than raw audio, enabling fast iteration without recomputing features each round
 
-## Run
+**BirdNET Embedding Pipeline (standalone Perch2/BirdNET pipeline)**
+- Wrote a standalone embedding pipeline that takes 5-second audio segments and generates BirdNET/Perch2 embeddings ready for the active learning loop
+- Handles segment extraction, model inference, and output formatting for downstream classification
 
-```bash
-cd active-learning-bioacoustics
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-python demo/active_learning_demo.py
-```
+---
 
-## Example output
+## Results (Synthetic Baseline)
 
-```
-=== Active learning demo (synthetic data) ===
-Pool: 1600 samples | Test: 400 | Classes: 5
-Start: 40 labeled, 1560 unlabeled
-Each round: add 40 by highest entropy | Rounds: 10
+The demo/ folder contains a synthetic tabular version of the experiment for reproducibility without requiring raw audio data or private datasets:
 
-Round  1 | labeled=  40 | test accuracy = 0.4550
-Round  2 | labeled=  80 | test accuracy = 0.4950
-Round  3 | labeled= 120 | test accuracy = 0.5350
-Round  4 | labeled= 160 | test accuracy = 0.5750
-Round  5 | labeled= 200 | test accuracy = 0.5750
-Round  6 | labeled= 240 | test accuracy = 0.6175
-Round  7 | labeled= 280 | test accuracy = 0.6600
-Round  8 | labeled= 320 | test accuracy = 0.6875
-Round  9 | labeled= 360 | test accuracy = 0.6800
-Round 10 | labeled= 400 | test accuracy = 0.6675
+    Active learning demo (synthetic data)
+    Pool: 1600 samples | Test: 400 | Classes: 5
+    Round 1 | labeled= 40  | test accuracy = 0.4550
+    Round 5 | labeled= 200 | test accuracy = 0.5750
+    Round 10| labeled= 400 | test accuracy = 0.6675
 
-Done.
-```
+With real BirdNET embeddings, the active learning loop shows much stronger early-round gains due to the richer feature space.
 
-(Exact numbers depend on `random_state` and sklearn version.)
+---
 
-## Limitations (intentional)
+## Setup
 
-- **Synthetic** data only; not a substitute for real bioacoustic benchmarks.
-- **Uncertainty sampling** is one strategy; others include margin, diversity, or hybrid criteria.
-- **Accuracy** is shown for clarity; imbalanced species distributions often need **macro-F1**, per-class recall, etc.
+    cd active-learning-bioacoustics
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    python demo/active_learning_demo.py
 
-## Push to GitHub
+---
 
-From this folder (after you create an empty repo on GitHub, or use your existing `active-learning-bioacoustics` repo):
+## Tech Stack
 
-```bash
-git remote add origin https://github.com/<your-username>/active-learning-bioacoustics.git
-git push -u origin main
-```
-
-If your default branch on GitHub is `master`, use `git push -u origin main` only if `main` exists locally; otherwise rename with `git branch -M main` first.
-
-## License
-
-Use freely for teaching and demos. No warranty.
+- Python 3.10+
+- BirdNET / Perch2 pretrained audio embeddings
+- scikit-learn (RandomForest, entropy sampling)
+- NumPy
